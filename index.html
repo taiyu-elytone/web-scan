@@ -1,67 +1,90 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>手機掃碼器</title>
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>📷 二維碼掃描器</title>
+  <script src="https://unpkg.com/html5-qrcode" defer></script>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', sans-serif;
       text-align: center;
       padding: 20px;
+      background: #f5f5f5;
     }
     #reader {
       width: 100%;
-      max-width: 400px;
+      max-width: 350px;
       margin: auto;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 10px #aaa;
     }
     #result {
       margin-top: 20px;
       font-size: 18px;
-      color: green;
+      color: #333;
       white-space: pre-line;
+      background: #e0ffe0;
+      padding: 10px;
+      border-radius: 8px;
+    }
+    .spinner {
+      margin-top: 10px;
+      color: #888;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
-  <h2>請對準 QR Code</h2>
+  <h2>📸 掃描 QR Code 上傳資料</h2>
   <div id="reader"></div>
   <div id="result">掃描結果會顯示在這裡</div>
+  <div class="spinner" id="loadingText"></div>
 
   <script>
-    function onScanSuccess(decodedText, decodedResult) {
-      const resultDiv = document.getElementById('result');
-      resultDiv.innerText = `掃描成功：${decodedText}\n上傳中...`;
+    let lastScanned = "";
 
-      // 替換成你的 Web App URL
+    function onScanSuccess(decodedText, decodedResult) {
+      if (decodedText === lastScanned) return;
+      lastScanned = decodedText;
+
+      const resultDiv = document.getElementById('result');
+      const loadingText = document.getElementById('loadingText');
+      resultDiv.innerText = `📦 掃描成功：${decodedText}`;
+      loadingText.innerText = "⬆️ 正在上傳中...";
+
+      // 替換成你自己的 GAS Web App URL
       const scriptUrl = 'https://script.google.com/macros/s/AKfycbxf-7omFxRs4hUAHr23PYLPmxxIo6_9wagj52z7vo0o_os4tbn2BC6cWEMAwLRsTHI2/exec';
 
       fetch(scriptUrl, {
         method: 'POST',
-        body: JSON.stringify({ text: decodedText }),
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text: decodedText })
       })
-      .then(response => response.text())
-      .then(result => {
-        resultDiv.innerText += `\n✅ 上傳成功：${result}`;
+      .then(res => res.text())
+      .then(msg => {
+        loadingText.innerText = `✅ 上傳成功：${msg}`;
+        // 3秒後允許再次掃描相同內容
+        setTimeout(() => { lastScanned = ""; }, 3000);
       })
-    	.catch(error => {
-		  resultDiv.innerText += `\n❌ 上傳失敗：${error.message || error}`;
-		  console.error('完整錯誤物件:', error);
-		});
-
-      html5QrcodeScanner.clear();
+      .catch(err => {
+        loadingText.innerText = `❌ 上傳失敗：${err.message}`;
+        console.error('上傳錯誤：', err);
+      });
     }
 
-    const html5QrcodeScanner = new Html5QrcodeScanner(
-      "reader", 
-      { fps: 10, qrbox: { width: 250, height: 250 } }, 
-      false
-    );
-    html5QrcodeScanner.render(onScanSuccess);
+    window.onload = () => {
+      const html5QrcodeScanner = new Html5QrcodeScanner("reader", {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        rememberLastUsedCamera: true,
+        showTorchButtonIfSupported: true,
+      }, false);
+      html5QrcodeScanner.render(onScanSuccess);
+    };
   </script>
 </body>
 </html>
