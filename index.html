@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>手機掃碼器</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    #reader {
+      width: 100%;
+      max-width: 400px;
+      margin: auto;
+    }
+    #result {
+      margin-top: 20px;
+      font-size: 18px;
+      color: green;
+      white-space: pre-line;
+    }
+  </style>
+</head>
+<body>
+  <h2>請對準 QR Code</h2>
+  <div id="reader"></div>
+  <div id="result">掃描結果會顯示在這裡</div>
+
+  <script>
+    function onScanSuccess(decodedText, decodedResult) {
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerText = `掃描成功：${decodedText}\n上傳中...`;
+
+      // 替換成你的 Web App URL
+      const scriptUrl = 'https://script.google.com/macros/s/AKfycbwtMBxfGFLTp78eMPiW3GOPBl5p5fkJrTDgwRGOopg8YYwegfunWnEZSoKrcX6AcGpxdw/exec';
+
+      fetch(scriptUrl, {
+        method: 'POST',
+        body: JSON.stringify({ text: decodedText }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => response.text())
+      .then(result => {
+        resultDiv.innerText += `\n✅ 上傳成功：${result}`;
+      })
+    	.catch(error => {
+		  resultDiv.innerText += `\n❌ 上傳失敗：${error.message || error}`;
+		  console.error('完整錯誤物件:', error);
+		});
+
+      html5QrcodeScanner.clear();
+    }
+
+    const html5QrcodeScanner = new Html5QrcodeScanner(
+      "reader", 
+      { fps: 10, qrbox: { width: 250, height: 250 } }, 
+      false
+    );
+    html5QrcodeScanner.render(onScanSuccess);
+  </script>
+</body>
+</html>
