@@ -54,16 +54,12 @@
       resultDiv.innerText = `📦 掃描成功：${decodedText}`;
       loadingText.innerText = "⬆️ 正在上傳中...";
 
-      // 替換成你自己的 GAS Web App URL
+      // 替換成你的 GAS Web App URL
       const scriptUrl = 'https://script.google.com/macros/s/AKfycbxf-7omFxRs4hUAHr23PYLPmxxIo6_9wagj52z7vo0o_os4tbn2BC6cWEMAwLRsTHI2/exec';
 
-      fetch(scriptUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text: decodedText })
-      })
+      const getUrl = `${scriptUrl}?text=${encodeURIComponent(decodedText)}`;
+
+      fetch(getUrl)
       .then(res => res.text())
       .then(msg => {
         loadingText.innerText = `✅ 上傳成功：${msg}`;
