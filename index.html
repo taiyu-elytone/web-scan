@@ -1,39 +1,248 @@
-function onScanSuccess(decodedText) {
-  if (decodedText === lastScanned) return;
-  lastScanned = decodedText;
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>📷 二維碼掃描及資料管理</title>
+  <!-- html5-qrcode -->
+  <script src="https://unpkg.com/html5-qrcode" defer></script>
+  <!-- DataTables -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    nav {
+      margin-bottom: 20px;
+    }
+    nav button {
+      margin: 5px;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      background-color: #4CAF50;
+      color: #fff;
+      cursor: pointer;
+    }
+    nav button:hover {
+      background-color: #45a049;
+    }
+    #reader, #readerQuery {
+      width: 100%;
+      max-width: 350px;
+      margin: auto;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 10px #aaa;
+    }
+    #result, #latestText {
+      margin-top: 20px;
+      font-size: 18px;
+      color: #333;
+      white-space: pre-line;
+      background: #e0ffe0;
+      padding: 10px;
+      border-radius: 8px;
+    }
+    .spinner {
+      margin-top: 10px;
+      color: #888;
+      font-size: 14px;
+    }
+    table.dataTable thead tr {
+      background-color: #4CAF50 !important;
+      color: white;
+    }
+    table.dataTable tbody tr:hover {
+      background-color: #f0f0f0;
+    }
+    table.dataTable {
+      margin: auto;
+      width: 90% !important;
+    }
+  </style>
+</head>
+<body>
+  <h2>📸 二維碼掃描及資料管理</h2>
 
-  if (currentMode === "scan") {
-    document.getElementById('result').innerText = `📦 掃描成功：${decodedText}`;
-    document.getElementById('loadingText').innerText = "⬆️ 正在上傳...";
-    fetch(`${scriptUrl}?action=WriteData&text=${encodeURIComponent(decodedText)}`)
-      .then(res => {
-        if (!res.ok) throw new Error(`伺服器錯誤: ${res.status}`);
-        return res.text();
-      })
-      .then(msg => {
-        document.getElementById('loadingText').innerText = `✅ 上傳成功：${msg}`;
-        setTimeout(() => { lastScanned = ""; }, 3000);
-      })
-      .catch(err => {
-        document.getElementById('loadingText').innerText = `❌ 上傳失敗：${err.message}`;
+  <nav>
+    <button onclick="switchMode('scan')">掃描上傳</button>
+    <button onclick="switchMode('query')">資料查詢</button>
+    <button onclick="loadData('A4O-Tracking')">A4O資料</button>
+    <button onclick="loadData('A4I-Tracking')">A4I資料</button>
+    <button onclick="loadData('A4IO-Tracking')">A4IO資料</button>
+  </nav>
+
+  <!-- 掃描上傳 -->
+  <div id="scanSection">
+    <div id="reader"></div>
+    <div id="result">掃描結果會顯示在這裡</div>
+    <div class="spinner" id="loadingText"></div>
+  </div>
+
+  <!-- 資料查詢 -->
+  <div id="querySection" style="display:none;">
+    <div id="readerQuery"></div>
+    <div id="latestText">掃描後顯示最新一筆文字</div>
+    <div class="spinner" id="queryLoading"></div>
+    <div id="queryTable"></div>
+  </div>
+
+  <!-- 其他 -->
+  <div id="tableSection" style="display:none;">
+    <h3 id="tableTitle">📄 資料列表</h3>
+    <div id="dataList"></div>
+  </div>
+
+  <script>
+    let lastScanned = "";
+    let currentMode = "scan";
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbzgXD-I_Jlr32IZYoc6WX9waBFUwhvOKRZ0265yKt-g98llTZfJx__14kYEUjdXKIEl/exec';
+
+    function renderTable(targetDiv, data) {
+      if (!Array.isArray(data) || data.length === 0) {
+        targetDiv.innerHTML = "⚠️ 沒有資料";
+        return;
+      }
+
+      if ($.fn.DataTable.isDataTable("#myTable")) {
+        $("#myTable").DataTable().destroy();
+        $("#myTable").empty();
+      }
+
+      let html = `<table id="myTable" class="display"><thead><tr>`;
+      data[0].forEach((th) => html += `<th>${th}</th>`);
+      html += `</tr></thead><tbody>`;
+      data.slice(1).reverse().forEach(row => {
+        html += `<tr>`;
+        row.forEach(cell => {
+          html += `<td>${cell}</td>`;
+        });
+        html += `</tr>`;
       });
-  } else if (currentMode === "query") {
-    document.getElementById('queryLoading').innerText = "🔍 正在查詢...";
-    fetch(`${scriptUrl}?action=DataFilter&filter=${encodeURIComponent(decodedText)}`)
-      .then(res => res.json())
-      .then(data => {
-        document.getElementById('queryLoading').innerText = "";
-        if (data.length > 0) {
-          let lastRow = data[data.length - 1];
-          document.getElementById('latestText').innerText = `最新一筆文字：${lastRow[1]}`;
-          renderTable(document.getElementById("queryTable"), data);
-        } else {
-          document.getElementById('latestText').innerText = "⚠️ 找不到符合資料";
+      html += `</tbody></table>`;
+      targetDiv.innerHTML = html;
+
+      $("#myTable").DataTable({
+        pageLength: 10,
+        language: {
+          url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/zh-HANT.json"
         }
-        setTimeout(() => { lastScanned = ""; }, 3000);
-      })
-      .catch(err => {
-        document.getElementById('queryLoading').innerText = `❌ 查詢失敗：${err.message}`;
       });
-  }
-}
+    }
+
+    function onScanSuccess(decodedText) {
+      if (decodedText === lastScanned) return;
+      lastScanned = decodedText;
+
+      if (currentMode === "scan") {
+        document.getElementById('result').innerText = `📦 掃描成功：${decodedText}`;
+        document.getElementById('loadingText').innerText = "⬆️ 正在上傳...";
+        fetch(`${scriptUrl}?action=WriteData&text=${encodeURIComponent(decodedText)}`)
+          .then(res => {
+            if (!res.ok) throw new Error(`伺服器錯誤: ${res.status}`);
+            return res.text();
+          })
+          .then(msg => {
+            document.getElementById('loadingText').innerText = `✅ 上傳成功：${msg}`;
+            setTimeout(() => { lastScanned = ""; }, 3000);
+          })
+          .catch(err => {
+            document.getElementById('loadingText').innerText = `❌ 上傳失敗：${err.message}`;
+          });
+      } else if (currentMode === "query") {
+        document.getElementById('queryLoading').innerText = "🔍 正在查詢...";
+        fetch(`${scriptUrl}?action=DataFilter&filter=${encodeURIComponent(decodedText)}`)
+          .then(res => res.json())
+          .then(data => {
+            document.getElementById('queryLoading').innerText = "";
+            if (data.length > 0) {
+              let lastRow = data[data.length - 1];
+              document.getElementById('latestText').innerText = `最新一筆文字：${lastRow[1]}`;
+              renderTable(document.getElementById("queryTable"), data);
+            } else {
+              document.getElementById('latestText').innerText = "⚠️ 找不到符合資料";
+            }
+            setTimeout(() => { lastScanned = ""; }, 3000);
+          })
+          .catch(err => {
+            document.getElementById('queryLoading').innerText = `❌ 查詢失敗：${err.message}`;
+          });
+      }
+    }
+
+    function loadData(action) {
+      document.getElementById("scanSection").style.display = "none";
+      document.getElementById("querySection").style.display = "none";
+      document.getElementById("tableSection").style.display = "block";
+
+      const titleText = action.replace("-Tracking", "") + "資料";
+      document.getElementById("tableTitle").innerText = `📄 ${titleText}`;
+
+      const dataList = document.getElementById("dataList");
+      dataList.innerHTML = "⌛ 載入中...";
+      fetch(`${scriptUrl}?action=${action}`)
+        .then(res => res.json())
+        .then(data => {
+          if (!Array.isArray(data) || data.length === 0) {
+            dataList.innerHTML = "⚠️ 沒有資料";
+            return;
+          }
+
+          let html = `<table id="dataTable" class="display"><thead><tr>`;
+          data[0].forEach((th) => html += `<th>${th}</th>`);
+          html += `</tr></thead><tbody>`;
+          data.slice(1).reverse().forEach(row => {
+            html += `<tr>`;
+            row.forEach(cell => {
+              html += `<td>${cell}</td>`;
+            });
+            html += `</tr>`;
+          });
+          html += `</tbody></table>`;
+
+          dataList.innerHTML = html;
+
+          $("#dataTable").DataTable({
+            pageLength: 10,
+            language: {
+              url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/zh-HANT.json"
+            }
+          });
+        })
+        .catch(err => {
+          dataList.innerHTML = `❌ 讀取失敗：${err.message}`;
+        });
+    }
+
+    function switchMode(mode) {
+      currentMode = mode;
+      if (mode === "scan") {
+        document.getElementById("scanSection").style.display = "block";
+        document.getElementById("querySection").style.display = "none";
+        document.getElementById("tableSection").style.display = "none";
+        scanner.render(onScanSuccess);
+        scannerQuery.clear();
+      } else if (mode === "query") {
+        document.getElementById("scanSection").style.display = "none";
+        document.getElementById("querySection").style.display = "block";
+        document.getElementById("tableSection").style.display = "none";
+        scannerQuery.render(onScanSuccess);
+        scanner.clear();
+      }
+    }
+
+    let scanner, scannerQuery;
+    window.onload = () => {
+      scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
+      scannerQuery = new Html5QrcodeScanner("readerQuery", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
+      scanner.render(onScanSuccess);
+    };
+  </script>
+</body>
+</html>
