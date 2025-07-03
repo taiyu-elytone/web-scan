@@ -16,8 +16,7 @@
     #result, #latestText { background:#e0ffe0; margin-top:20px; padding:10px; border-radius:8px; }
     .tag-button { margin:5px; padding:8px 16px; border-radius:6px; border:1px solid #4CAF50; background:white; cursor:pointer; }
     .tag-button.active { background:#c8e6c9; }
-    .tag-panel { display:none; margin:10px 0; }
-    .tag-panel select, .tag-panel input { margin-top:5px; }
+    .tag-panel { margin-top:15px; }
   </style>
 </head>
 <body>
@@ -33,7 +32,12 @@
   <!-- 掃描上傳 -->
   <div id="scanSection">
     <div id="reader"></div>
-    <div id="tagSection"></div>
+    <div id="tagButtons" style="margin-top:15px;"></div>
+    <div id="tagPanel" class="tag-panel"></div>
+    <div style="margin-top:10px;">
+      <label>備註：</label>
+      <input type="text" id="globalNote" placeholder="輸入備註" style="width:80%; padding:5px;">
+    </div>
     <div id="result">掃描結果會顯示在這裡</div>
     <div class="spinner" id="loadingText"></div>
   </div>
@@ -57,122 +61,98 @@ let lastScanned = "";
 let currentMode = "scan";
 const scriptUrl = "https://script.google.com/macros/s/AKfycbzgXD-I_Jlr32IZYoc6WX9waBFUwhvOKRZ0265yKt-g98llTZfJx__14kYEUjdXKIEl/exec";
 
-let tagData = {};   // 存標籤選項
-let selectedTag = "";  // 目前選擇的標籤
-let selectedValues = {}; // 標籤選的內容
-let noteValues = {};     // 備註
+let tagData = {};   // 標籤及選項
+let selectedValues = {};  // 標籤選的值
+let activeTag = "";       // 目前點擊的標籤
 
 function loadTags() {
   fetch(`${scriptUrl}?action=ItemList`)
     .then(res => res.json())
     .then(data => {
-      // 先抓第一欄
       data.slice(2).forEach(row => {
         const tag = row[0];
         const options = row.slice(1).filter(cell => cell !== "" && cell != null);
         tagData[tag] = options;
       });
-      renderTagUI();
+      renderTagButtons();
     })
     .catch(err => console.error("讀取ItemList失敗", err));
 }
 
-function renderTagUI() {
-  const container = document.getElementById("tagSection");
-  let html = "";
+function renderTagButtons() {
+  const btnContainer = document.getElementById("tagButtons");
+  btnContainer.innerHTML = "";
   Object.keys(tagData).forEach(tag => {
-    html += `
-    <div style="margin:5px;">
-      <button class="tag-button" id="tagBtn-${tag}" onclick="toggleTag('${tag}')">${tag}</button>
-      <div class="tag-panel" id="panel-${tag}">
-        <select id="select-${tag}">
-          <option value="">請選擇</option>
-          ${tagData[tag].map(opt => `<option value="${opt}">${opt}</option>`).join("")}
-        </select>
-        <input id="note-${tag}" placeholder="備註">
-      </div>
-    </div>`;
+    btnContainer.innerHTML += `<button class="tag-button" id="btn-${tag}" onclick="toggleTag('${tag}')">${tag}</button>`;
   });
-  container.innerHTML = html;
 }
 
 function toggleTag(tag) {
-  // 只允許同時一個展開
-  Object.keys(tagData).forEach(t => {
-    document.getElementById(`panel-${t}`).style.display = (t === tag) ? "block" : "none";
-  });
-  selectedTag = tag;
-}
+  activeTag = tag;
 
-function updateTagColor() {
-  Object.keys(tagData).forEach(tag => {
-    const sel = selectedValues[tag];
-    if (sel && sel !== "") {
-      document.getElementById(`tagBtn-${tag}`).style.background = "#c8e6c9"; // 綠
+  // 更新按鈕狀態
+  Object.keys(tagData).forEach(t => {
+    const btn = document.getElementById(`btn-${t}`);
+    if (selectedValues[t]) {
+      btn.style.background = "#c8e6c9";
     } else {
-      document.getElementById(`tagBtn-${tag}`).style.background = "white";
+      btn.style.background = "white";
     }
   });
+  document.getElementById(`btn-${tag}`).style.background = "#a5d6a7"; // active
+
+  // 在固定面板顯示
+  const panel = document.getElementById("tagPanel");
+  let html = `<label>${tag} 選項：</label><select id="select-${tag}"><option value="">請選擇</option>`;
+  tagData[tag].forEach(opt => {
+    html += `<option value="${opt}">${opt}</option>`;
+  });
+  html += `</select>`;
+  panel.innerHTML = html;
+
+  // 如果有之前選擇過，就填入
+  if (selectedValues[tag]) {
+    document.getElementById(`select-${tag}`).value = selectedValues[tag];
+  }
+
+  // 綁定選擇事件
+  document.getElementById(`select-${tag}`).onchange = (e) => {
+    selectedValues[tag] = e.target.value;
+    toggleTag(""); // 收起
+  };
 }
 
 function onScanSuccess(decodedText) {
   if (decodedText === lastScanned) return;
   lastScanned = decodedText;
 
-  if (currentMode === "scan") {
-    // 收集目前選的標籤
-    if (selectedTag) {
-      const sel = document.getElementById(`select-${selectedTag}`).value;
-      const note = document.getElementById(`note-${selectedTag}`).value;
-      selectedValues[selectedTag] = sel;
-      noteValues[selectedTag] = note;
+  // 組合所有標籤
+  let extra = "";
+  Object.keys(selectedValues).forEach(tag => {
+    if (selectedValues[tag]) {
+      extra += `${tag}:${selectedValues[tag]}, `;
     }
-    updateTagColor();
-
-    // 組合標籤
-    let extra = "";
-    Object.keys(selectedValues).forEach(tag => {
-      const val = selectedValues[tag];
-      if (val) extra += `${tag}:${val}, `;
-    });
-    Object.keys(noteValues).forEach(tag => {
-      const val = noteValues[tag];
-      if (val) extra += `${tag}備註:${val}, `;
-    });
-    extra = extra.slice(0,-2);  // 去掉最後逗號
-
-    const finalText = decodedText + (extra ? ` | ${extra}` : "");
-
-    document.getElementById('result').innerText = `📦 掃描成功：${finalText}`;
-    document.getElementById('loadingText').innerText = "⬆️ 正在上傳...";
-    fetch(`${scriptUrl}?action=WriteData&text=${encodeURIComponent(finalText)}`)
-      .then(res => res.text())
-      .then(msg => {
-        document.getElementById('loadingText').innerText = `✅ 上傳成功：${msg}`;
-        setTimeout(() => { lastScanned = ""; }, 3000);
-      })
-      .catch(err => {
-        document.getElementById('loadingText').innerText = `❌ 上傳失敗：${err.message}`;
-      });
-  } else if (currentMode === "query") {
-    document.getElementById('queryLoading').innerText = "🔍 正在查詢...";
-    fetch(`${scriptUrl}?action=DataFilter&filter=${encodeURIComponent(decodedText)}`)
-      .then(res => res.json())
-      .then(data => {
-        document.getElementById('queryLoading').innerText = "";
-        if (data.length > 0) {
-          let lastRow = data[data.length - 1];
-          document.getElementById('latestText').innerText = `最新一筆文字：${lastRow[1]}`;
-          renderTable(document.getElementById("queryTable"), data);
-        } else {
-          document.getElementById('latestText').innerText = "⚠️ 找不到符合資料";
-        }
-        setTimeout(() => { lastScanned = ""; }, 3000);
-      })
-      .catch(err => {
-        document.getElementById('queryLoading').innerText = `❌ 查詢失敗：${err.message}`;
-      });
+  });
+  const note = document.getElementById("globalNote").value;
+  if (note) {
+    extra += `備註:${note}`;
   }
+  if (extra.endsWith(", ")) {
+    extra = extra.slice(0, -2);
+  }
+  const finalText = decodedText + (extra ? ` | ${extra}` : "");
+
+  document.getElementById('result').innerText = `📦 掃描成功：${finalText}`;
+  document.getElementById('loadingText').innerText = "⬆️ 正在上傳...";
+  fetch(`${scriptUrl}?action=WriteData&text=${encodeURIComponent(finalText)}`)
+    .then(res => res.text())
+    .then(msg => {
+      document.getElementById('loadingText').innerText = `✅ 上傳成功：${msg}`;
+      setTimeout(() => { lastScanned = ""; }, 3000);
+    })
+    .catch(err => {
+      document.getElementById('loadingText').innerText = `❌ 上傳失敗：${err.message}`;
+    });
 }
 
 function renderTable(targetDiv, data) {
@@ -189,18 +169,14 @@ function renderTable(targetDiv, data) {
   html += `</tr></thead><tbody>`;
   data.slice(1).reverse().forEach(row => {
     html += `<tr>`;
-    row.forEach(cell => {
-      html += `<td>${cell}</td>`;
-    });
+    row.forEach(cell => { html += `<td>${cell}</td>`; });
     html += `</tr>`;
   });
   html += `</tbody></table>`;
   targetDiv.innerHTML = html;
   $("#myTable").DataTable({
     pageLength: 10,
-    language: {
-      url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/zh-HANT.json"
-    }
+    language: { url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/zh-HANT.json" }
   });
 }
 
@@ -208,8 +184,7 @@ function loadData(action) {
   document.getElementById("scanSection").style.display = "none";
   document.getElementById("querySection").style.display = "none";
   document.getElementById("tableSection").style.display = "block";
-  const titleText = action.replace("-Tracking", "") + "資料";
-  document.getElementById("tableTitle").innerText = `📄 ${titleText}`;
+  document.getElementById("tableTitle").innerText = `📄 ${action.replace("-Tracking","")} 資料`;
   const dataList = document.getElementById("dataList");
   dataList.innerHTML = "⌛ 載入中...";
   fetch(`${scriptUrl}?action=${action}`)
@@ -224,18 +199,14 @@ function loadData(action) {
       html += `</tr></thead><tbody>`;
       data.slice(1).reverse().forEach(row => {
         html += `<tr>`;
-        row.forEach(cell => {
-          html += `<td>${cell}</td>`;
-        });
+        row.forEach(cell => { html += `<td>${cell}</td>`; });
         html += `</tr>`;
       });
       html += `</tbody></table>`;
       dataList.innerHTML = html;
       $("#dataTable").DataTable({
         pageLength: 10,
-        language: {
-          url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/zh-HANT.json"
-        }
+        language: { url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/zh-HANT.json" }
       });
     })
     .catch(err => { dataList.innerHTML = `❌ 讀取失敗：${err.message}`; });
