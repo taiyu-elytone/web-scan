@@ -134,7 +134,7 @@ function onScanSuccess(decodedText) {
   const note = document.getElementById("globalNote").value;
   let finalNote = noteContent + (noteContent && note ? ", " : "") + note;
 
-  const finalText = `${decodedText} | ${finalNote}`;
+  const finalText = `${decodedText}&note=${finalNote}`;
 
   document.getElementById('result').innerText = `📦 掃描成功：${finalText}`;
   document.getElementById('loadingText').innerText = "⬆️ 正在上傳...";
