@@ -115,7 +115,7 @@ function toggleTag(tag) {
 
   document.getElementById(`select-${tag}`).onchange = (e) => {
     selectedValues[tag] = e.target.value;
-    toggleTag("");
+    activeTag = ""; // 只清除 activeTag，不要再呼叫 toggleTag("")
   };
 }
 
