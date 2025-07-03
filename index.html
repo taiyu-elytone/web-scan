@@ -68,15 +68,21 @@
       margin: auto;
       width: 90% !important;
     }
-    .card {
+    ul.simple-list {
+      list-style-type: none;
+      padding: 0;
+      width: 90%;
+      margin: auto;
+    }
+    ul.simple-list li {
       background: #fff;
       border: 1px solid #ccc;
-      border-radius: 8px;
-      padding: 10px;
-      margin: 6px auto;
-      width: 90%;
+      padding: 8px;
+      margin: 4px 0;
       text-align: left;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    ul.simple-list li:hover {
+      background: #f0f0f0;
     }
   </style>
 </head>
@@ -115,7 +121,7 @@
   <script>
     let lastScanned = "";
     let currentMode = "scan";
-    const scriptUrl = 'https://script.google.com/macros/s/AKfycbwhsEAil8GvwtMcZ8p2ypiLFrI9xln600Y8qnJip4LlOtJpJ-5uUNMX7AsoFC9qr_01/exec';
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycby7Xx7L1-GTL01_AlwpLNDCyDKx-P0_XHbUev5n9JoBv9wrEKwcAaukJMfwLbfH4LuG/exec';
 
     function renderTable(targetDiv, data) {
       if (!Array.isArray(data) || data.length === 0) {
@@ -205,14 +211,11 @@
             dataList.innerHTML = "⚠️ 沒有資料";
             return;
           }
-          let html = "";
+          let html = "<ul class='simple-list'>";
           data.slice(1).reverse().forEach(row => {
-            html += `<div class="card">`;
-            row.forEach((cell, idx) => {
-              html += `<strong>欄${idx + 1}</strong>：${cell}<br>`;
-            });
-            html += `</div>`;
+            html += `<li>${row.join(" | ")}</li>`;
           });
+          html += "</ul>";
           dataList.innerHTML = html;
         })
         .catch(err => {
