@@ -54,6 +54,16 @@
       color: #888;
       font-size: 14px;
     }
+    table.dataTable thead tr {
+      background-color: #4CAF50 !important;
+      color: white;
+    }
+    table.dataTable tbody tr {
+      background-color: #fff;
+    }
+    table.dataTable tbody tr:hover {
+      background-color: #f0f0f0;
+    }
     table.dataTable {
       margin: auto;
       width: 90% !important;
@@ -89,7 +99,7 @@
 
   <!-- 其他 -->
   <div id="tableSection" style="display:none;">
-    <h3>📄 資料列表</h3>
+    <h3 id="tableTitle">📄 資料列表</h3>
     <div id="dataList"></div>
   </div>
 
@@ -104,7 +114,6 @@
         return;
       }
 
-      // 銷毀已存在的 DataTable
       if ( $.fn.DataTable.isDataTable("#myTable") ) {
         $("#myTable").DataTable().destroy();
       }
@@ -112,7 +121,7 @@
       let html = `<table id="myTable" class="display"><thead><tr>`;
       data[0].forEach((th) => html += `<th>${th}</th>`);
       html += `</tr></thead><tbody>`;
-      data.slice(1).forEach(row => {
+      data.slice(1).reverse().forEach(row => {
         html += `<tr>`;
         row.forEach(cell => {
           html += `<td>${cell}</td>`;
@@ -123,7 +132,7 @@
       targetDiv.innerHTML = html;
 
       $("#myTable").DataTable({
-        order: [[0, "desc"]],  // 以第一欄日期倒序
+        pageLength: 10,
         language: {
           url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/zh-HANT.json"
         }
@@ -171,6 +180,11 @@
       document.getElementById("scanSection").style.display = "none";
       document.getElementById("querySection").style.display = "none";
       document.getElementById("tableSection").style.display = "block";
+
+      // 自動改標題
+      const titleText = action.replace("-Tracking", "") + "資料";
+      document.getElementById("tableTitle").innerText = `📄 ${titleText}`;
+
       const dataList = document.getElementById("dataList");
       dataList.innerHTML = "⌛ 載入中...";
       fetch(`${scriptUrl}?action=${action}`)
