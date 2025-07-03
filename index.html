@@ -69,7 +69,7 @@ function loadTags() {
   fetch(`${scriptUrl}?action=ItemList`)
     .then(res => res.json())
     .then(data => {
-      data.slice(2).forEach(row => {
+      data.forEach(row => {
         const tag = row[0];
         const options = row.slice(1).filter(cell => cell !== "" && cell != null);
         tagData[tag] = options;
@@ -134,11 +134,11 @@ function onScanSuccess(decodedText) {
   const note = document.getElementById("globalNote").value;
   let finalNote = noteContent + (noteContent && note ? ", " : "") + note;
 
-  const finalText = `${decodedText}&note=${finalNote}`;
+  const finalText = `${decodedText}`;
 
   document.getElementById('result').innerText = `📦 掃描成功：${finalText}`;
   document.getElementById('loadingText').innerText = "⬆️ 正在上傳...";
-  fetch(`${scriptUrl}?action=WriteData&text=${encodeURIComponent(finalText)}`)
+  fetch(`${scriptUrl}?action=WriteData&text=${encodeURIComponent(finalText)}&note=${encodeURIComponent(finalNote)}`)
     .then(res => res.text())
     .then(msg => {
       document.getElementById('loadingText').innerText = `✅ 上傳成功：${msg}`;
