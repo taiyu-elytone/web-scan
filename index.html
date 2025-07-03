@@ -29,7 +29,6 @@
     <button onclick="loadData('A4IO-Tracking')">A4IO資料</button>
   </nav>
 
-  <!-- 掃描上傳 -->
   <div id="scanSection">
     <div id="reader"></div>
     <div id="tagButtons" style="margin-top:15px;"></div>
@@ -39,18 +38,16 @@
       <input type="text" id="globalNote" placeholder="輸入備註" style="width:80%; padding:5px;">
     </div>
     <div id="result">掃描結果會顯示在這裡</div>
-    <div class="spinner" id="loadingText"></div>
+    <div id="loadingText"></div>
   </div>
 
-  <!-- 資料查詢 -->
   <div id="querySection" style="display:none;">
     <div id="readerQuery"></div>
     <div id="latestText">掃描後顯示最新一筆文字</div>
-    <div class="spinner" id="queryLoading"></div>
+    <div id="queryLoading"></div>
     <div id="queryTable"></div>
   </div>
 
-  <!-- 其他 -->
   <div id="tableSection" style="display:none;">
     <h3 id="tableTitle">📄 資料列表</h3>
     <div id="dataList"></div>
@@ -61,9 +58,9 @@ let lastScanned = "";
 let currentMode = "scan";
 const scriptUrl = "https://script.google.com/macros/s/AKfycbzgXD-I_Jlr32IZYoc6WX9waBFUwhvOKRZ0265yKt-g98llTZfJx__14kYEUjdXKIEl/exec";
 
-let tagData = {};   // 標籤及選項
-let selectedValues = {};  // 標籤選的值
-let activeTag = "";       // 目前點擊的標籤
+let tagData = {};      // 所有標籤定義
+let selectedValues = {};  // 目前選的標籤
+let activeTag = "";       // 目前正在操作的標籤
 
 function loadTags() {
   fetch(`${scriptUrl}?action=ItemList`)
@@ -89,19 +86,11 @@ function renderTagButtons() {
 
 function toggleTag(tag) {
   activeTag = tag;
-
-  // 更新按鈕狀態
   Object.keys(tagData).forEach(t => {
     const btn = document.getElementById(`btn-${t}`);
-    if (selectedValues[t]) {
-      btn.style.background = "#c8e6c9";
-    } else {
-      btn.style.background = "white";
-    }
+    btn.style.background = selectedValues[t] ? "#c8e6c9" : "white";
   });
-  document.getElementById(`btn-${tag}`).style.background = "#a5d6a7"; // active
-
-  // 在固定面板顯示
+  document.getElementById(`btn-${tag}`).style.background = "#a5d6a7";
   const panel = document.getElementById("tagPanel");
   let html = `<label>${tag} 選項：</label><select id="select-${tag}"><option value="">請選擇</option>`;
   tagData[tag].forEach(opt => {
@@ -109,69 +98,64 @@ function toggleTag(tag) {
   });
   html += `</select>`;
   panel.innerHTML = html;
-
-  // 如果有之前選擇過，就填入
   if (selectedValues[tag]) {
     document.getElementById(`select-${tag}`).value = selectedValues[tag];
   }
-
-  // 綁定選擇事件
   document.getElementById(`select-${tag}`).onchange = (e) => {
     selectedValues[tag] = e.target.value;
-    toggleTag(""); // 收起
+    toggleTag("");
   };
 }
 
-function onScanSuccess(decodedText) {
+async function onScanSuccess(decodedText) {
   if (decodedText === lastScanned) return;
   lastScanned = decodedText;
 
-  // 把條碼內容存到 text，並且把其他標籤加到 note
-  const noteContent = Object.keys(selectedValues)
-    .map(tag => selectedValues[tag] ? `${tag}:${selectedValues[tag]}` : "")
-    .filter(val => val !== "").join(", ");
+  document.getElementById('result').innerText = `📦 掃描成功：${decodedText}`;
+  document.getElementById('loadingText').innerText = "⬆️ 讀取最新資料中...";
 
-  const note = document.getElementById("globalNote").value;
-  let finalNote = noteContent + (noteContent && note ? ", " : "") + note;
+  // 1. 先取最新一筆
+  try {
+    const res = await fetch(`${scriptUrl}?action=LatestDataFilter&filter=${encodeURIComponent(decodedText)}`);
+    const json = await res.json();
+    let previousNote = json?.data?.備註 || "";
 
-  const finalText = `${decodedText}`;
+    // 2. 解析舊標籤
+    let previousTagValues = {};
+    if (previousNote) {
+      previousNote.split(",").forEach(pair => {
+        const [k,v] = pair.split(":");
+        if (k && v) previousTagValues[k.trim()] = v.trim();
+      });
+    }
 
-  document.getElementById('result').innerText = `📦 掃描成功：${finalText}`;
-  document.getElementById('loadingText').innerText = "⬆️ 正在上傳...";
-  fetch(`${scriptUrl}?action=WriteData&text=${encodeURIComponent(finalText)}&note=${encodeURIComponent(finalNote)}`)
-    .then(res => res.text())
-    .then(msg => {
-      document.getElementById('loadingText').innerText = `✅ 上傳成功：${msg}`;
-      setTimeout(() => { lastScanned = ""; }, 3000);
-    })
-    .catch(err => {
-      document.getElementById('loadingText').innerText = `❌ 上傳失敗：${err.message}`;
+    // 3. 把目前畫面選的合併進去
+    Object.keys(selectedValues).forEach(tag => {
+      if (selectedValues[tag]) {
+        previousTagValues[tag] = selectedValues[tag]; // 覆蓋
+      }
     });
-}
 
-function renderTable(targetDiv, data) {
-  if (!Array.isArray(data) || data.length === 0) {
-    targetDiv.innerHTML = "⚠️ 沒有資料";
-    return;
+    // 4. 加上額外輸入的備註
+    const extraNote = document.getElementById("globalNote").value;
+    if (extraNote) previousTagValues["備註"] = extraNote;
+
+    // 5. 整理 note
+    const finalNote = Object.entries(previousTagValues)
+      .map(([k,v]) => `${k}:${v}`)
+      .join(", ");
+
+    // 6. 上傳
+    document.getElementById('loadingText').innerText = "⬆️ 正在上傳...";
+    const up = await fetch(`${scriptUrl}?action=WriteData&text=${encodeURIComponent(decodedText)}&note=${encodeURIComponent(finalNote)}`);
+    const upText = await up.text();
+    document.getElementById('loadingText').innerText = `✅ 上傳成功：${upText}`;
+    setTimeout(() => { lastScanned = ""; }, 3000);
+
+  } catch(err) {
+    console.error(err);
+    document.getElementById('loadingText').innerText = `❌ 上傳失敗：${err.message}`;
   }
-  if ($.fn.DataTable.isDataTable("#myTable")) {
-    $("#myTable").DataTable().destroy();
-    $("#myTable").empty();
-  }
-  let html = `<table id="myTable" class="display"><thead><tr>`;
-  data[0].forEach((th) => html += `<th>${th}</th>`);
-  html += `</tr></thead><tbody>`;
-  data.slice(1).reverse().forEach(row => {
-    html += `<tr>`;
-    row.forEach(cell => { html += `<td>${cell}</td>`; });
-    html += `</tr>`;
-  });
-  html += `</tbody></table>`;
-  targetDiv.innerHTML = html;
-  $("#myTable").DataTable({
-    pageLength: 10,
-    language: { url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/zh-HANT.json" }
-  });
 }
 
 function loadData(action) {
@@ -184,14 +168,14 @@ function loadData(action) {
   fetch(`${scriptUrl}?action=${action}`)
     .then(res => res.json())
     .then(data => {
-      if (!Array.isArray(data) || data.length === 0) {
+      if (!Array.isArray(data.data) || data.data.length === 0) {
         dataList.innerHTML = "⚠️ 沒有資料";
         return;
       }
       let html = `<table id="dataTable" class="display"><thead><tr>`;
-      data[0].forEach((th) => html += `<th>${th}</th>`);
+      data.data[0].forEach((th) => html += `<th>${th}</th>`);
       html += `</tr></thead><tbody>`;
-      data.slice(1).reverse().forEach(row => {
+      data.data.slice(1).reverse().forEach(row => {
         html += `<tr>`;
         row.forEach(cell => { html += `<td>${cell}</td>`; });
         html += `</tr>`;
