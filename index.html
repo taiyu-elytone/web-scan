@@ -12,6 +12,21 @@
       padding: 20px;
       background: #f5f5f5;
     }
+    nav {
+      margin-bottom: 20px;
+    }
+    nav button {
+      margin: 5px;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      background-color: #4CAF50;
+      color: #fff;
+      cursor: pointer;
+    }
+    nav button:hover {
+      background-color: #45a049;
+    }
     #reader {
       width: 100%;
       max-width: 350px;
@@ -37,13 +52,34 @@
   </style>
 </head>
 <body>
-  <h2>📸 掃描 QR Code 上傳資料</h2>
-  <div id="reader"></div>
-  <div id="result">掃描結果會顯示在這裡</div>
-  <div class="spinner" id="loadingText"></div>
+  <h2>📸 二維碼掃描及資料管理</h2>
+
+  <!-- 導覽列 -->
+  <nav>
+    <button onclick="showScan()">掃描上傳</button>
+    <button onclick="loadData('DataList')">資料查詢</button>
+    <button onclick="loadData('A4O-Tracking')">A4O資料</button>
+    <button onclick="loadData('A4I-Tracking')">A4I資料</button>
+    <button onclick="loadData('A4IO-Tracking')">A4IO資料</button>
+  </nav>
+
+  <!-- 掃描器 -->
+  <div id="scanSection">
+    <div id="reader"></div>
+    <div id="result">掃描結果會顯示在這裡</div>
+    <div class="spinner" id="loadingText"></div>
+  </div>
+
+  <!-- 資料列表 -->
+  <div id="dataSection" style="display:none;">
+    <h3>📄 資料列表</h3>
+    <pre id="dataList" style="background:#fff;padding:10px;border-radius:8px;overflow:auto;max-height:400px;"></pre>
+  </div>
 
   <script>
     let lastScanned = "";
+
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbzVRf4XZilzqhGO6O5zoEh_gZmpCEwJODDpXEoo1IqgQnsmgknd3Rz5XgruZpqo-e0z/exec';
 
     function onScanSuccess(decodedText, decodedResult) {
       if (decodedText === lastScanned) return;
@@ -54,22 +90,38 @@
       resultDiv.innerText = `📦 掃描成功：${decodedText}`;
       loadingText.innerText = "⬆️ 正在上傳中...";
 
-      // 替換成你的 GAS Web App URL
-      const scriptUrl = 'https://script.google.com/macros/s/AKfycbzVRf4XZilzqhGO6O5zoEh_gZmpCEwJODDpXEoo1IqgQnsmgknd3Rz5XgruZpqo-e0z/exec';
-
-      const getUrl = `${scriptUrl}?text=${encodeURIComponent(decodedText)}`;
+      const getUrl = `${scriptUrl}?action=WriteData&text=${encodeURIComponent(decodedText)}`;
 
       fetch(getUrl)
       .then(res => res.text())
       .then(msg => {
         loadingText.innerText = `✅ 上傳成功：${msg}`;
-        // 3秒後允許再次掃描相同內容
         setTimeout(() => { lastScanned = ""; }, 3000);
       })
       .catch(err => {
         loadingText.innerText = `❌ 上傳失敗：${err.message}`;
         console.error('上傳錯誤：', err);
       });
+    }
+
+    function loadData(action) {
+      document.getElementById("scanSection").style.display = "none";
+      document.getElementById("dataSection").style.display = "block";
+      const dataList = document.getElementById("dataList");
+      dataList.innerText = "⌛ 載入中...";
+      fetch(`${scriptUrl}?action=${action}`)
+      .then(res => res.json())
+      .then(data => {
+        dataList.innerText = JSON.stringify(data, null, 2);
+      })
+      .catch(err => {
+        dataList.innerText = `❌ 載入錯誤：${err.message}`;
+      });
+    }
+
+    function showScan() {
+      document.getElementById("scanSection").style.display = "block";
+      document.getElementById("dataSection").style.display = "none";
     }
 
     window.onload = () => {
