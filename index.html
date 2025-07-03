@@ -13,7 +13,7 @@
     nav button { margin:5px; padding:8px 16px; border:none; border-radius:6px; background:#4CAF50; color:white; cursor:pointer; }
     nav button:hover { background:#45a049; }
     #reader, #readerQuery { max-width:350px; margin:auto; }
-    #result, #latestText { background:#e0ffe0; margin-top:20px; padding:10px; border-radius:8px; }
+    #result, #latestRecord { background:#e0ffe0; margin-top:20px; padding:10px; border-radius:8px; white-space:pre-wrap; }
     .tag-button { margin:5px; padding:8px 16px; border-radius:6px; border:1px solid #4CAF50; background:white; cursor:pointer; }
     .tag-button.active { background:#c8e6c9; }
     .tag-panel { margin-top:15px; }
@@ -38,6 +38,7 @@
       <input type="text" id="globalNote" placeholder="輸入備註" style="width:80%; padding:5px;">
     </div>
     <div id="result">掃描結果會顯示在這裡</div>
+    <div id="latestRecord">上次紀錄會顯示在這裡</div>
     <div id="loadingText"></div>
   </div>
 
@@ -58,9 +59,9 @@ let lastScanned = "";
 let currentMode = "scan";
 const scriptUrl = "https://script.google.com/macros/s/AKfycbyN49RSqSW6T4hroGFgCd0l-ql0WPl8rAIwy3hLRCtR2kbytEcaT7V_Dqik05grx_J5/exec";
 
-let tagData = {};      // 所有標籤定義
-let selectedValues = {};  // 目前選的標籤
-let activeTag = "";       // 目前正在操作的標籤
+let tagData = {};     
+let selectedValues = {};  
+let activeTag = "";       
 
 function loadTags() {
   fetch(`${scriptUrl}?action=ItemList`)
@@ -72,6 +73,11 @@ function loadTags() {
         tagData[tag] = options;
       });
       renderTagButtons();
+
+      const firstTag = Object.keys(tagData)[0];
+      if (firstTag) {
+        toggleTag(firstTag);
+      }
     })
     .catch(err => console.error("讀取ItemList失敗", err));
 }
@@ -85,12 +91,15 @@ function renderTagButtons() {
 }
 
 function toggleTag(tag) {
+  if (!tag) return; 
+
   activeTag = tag;
   Object.keys(tagData).forEach(t => {
     const btn = document.getElementById(`btn-${t}`);
     btn.style.background = selectedValues[t] ? "#c8e6c9" : "white";
   });
   document.getElementById(`btn-${tag}`).style.background = "#a5d6a7";
+
   const panel = document.getElementById("tagPanel");
   let html = `<label>${tag} 選項：</label><select id="select-${tag}"><option value="">請選擇</option>`;
   tagData[tag].forEach(opt => {
@@ -98,12 +107,15 @@ function toggleTag(tag) {
   });
   html += `</select>`;
   panel.innerHTML = html;
+
   if (selectedValues[tag]) {
     document.getElementById(`select-${tag}`).value = selectedValues[tag];
   }
+
   document.getElementById(`select-${tag}`).onchange = (e) => {
     selectedValues[tag] = e.target.value;
-    toggleTag("");
+    activeTag = ""; 
+    renderTagButtons(); 
   };
 }
 
@@ -114,13 +126,14 @@ async function onScanSuccess(decodedText) {
   document.getElementById('result').innerText = `📦 掃描成功：${decodedText}`;
   document.getElementById('loadingText').innerText = "⬆️ 讀取最新資料中...";
 
-  // 1. 先取最新一筆
   try {
     const res = await fetch(`${scriptUrl}?action=LatestDataFilter&filter=${encodeURIComponent(decodedText)}`);
     const json = await res.json();
     let previousNote = json?.data?.備註 || "";
+    let previousDate = json?.data?.日期 || "無";
 
-    // 2. 解析舊標籤
+    document.getElementById("latestRecord").innerText = `📄 上次紀錄：${previousDate}\n備註：${previousNote || "無"}`;
+
     let previousTagValues = {};
     if (previousNote) {
       previousNote.split(",").forEach(pair => {
@@ -129,23 +142,19 @@ async function onScanSuccess(decodedText) {
       });
     }
 
-    // 3. 把目前畫面選的合併進去
     Object.keys(selectedValues).forEach(tag => {
       if (selectedValues[tag]) {
-        previousTagValues[tag] = selectedValues[tag]; // 覆蓋
+        previousTagValues[tag] = selectedValues[tag];
       }
     });
 
-    // 4. 加上額外輸入的備註
     const extraNote = document.getElementById("globalNote").value;
     if (extraNote) previousTagValues["備註"] = extraNote;
 
-    // 5. 整理 note
     const finalNote = Object.entries(previousTagValues)
       .map(([k,v]) => `${k}:${v}`)
       .join(", ");
 
-    // 6. 上傳
     document.getElementById('loadingText').innerText = "⬆️ 正在上傳...";
     const up = await fetch(`${scriptUrl}?action=WriteData&text=${encodeURIComponent(decodedText)}&note=${encodeURIComponent(finalNote)}`);
     const upText = await up.text();
