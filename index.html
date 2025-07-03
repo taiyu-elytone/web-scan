@@ -32,8 +32,8 @@
   <!-- 掃描上傳 -->
   <div id="scanSection">
     <div id="reader"></div>
-    <div id="tagButtons" style="margin-top:15px;"></div>
-    <div id="tagPanel" class="tag-panel"></div>
+    <div id="tagButtons" style="margin-top:15px; display:none;"></div>
+    <div id="tagPanel" class="tag-panel" style="display:none;"></div>
     <div style="margin-top:10px;">
       <label>備註：</label>
       <input type="text" id="globalNote" placeholder="輸入備註" style="width:80%; padding:5px;">
@@ -77,13 +77,21 @@ function loadTags() {
       });
       renderTagButtons();
 
-      // 自動切第一個標籤
+      // 顯示按鈕和選單
+      document.getElementById("tagButtons").style.display = "block";
+      document.getElementById("tagPanel").style.display = "block";
+
+      // 自動顯示第一個
       const firstTag = Object.keys(tagData)[0];
       if (firstTag) {
         toggleTag(firstTag);
       }
     })
-    .catch(err => console.error("讀取ItemList失敗", err));
+    .catch(err => {
+      console.error("讀取ItemList失敗", err);
+      document.getElementById("tagPanel").style.display = "block";
+      document.getElementById("tagPanel").innerText = "⚠️ 讀取失敗，請重整";
+    });
 }
 
 function renderTagButtons() {
@@ -99,12 +107,20 @@ function toggleTag(tag) {
 
   Object.keys(tagData).forEach(t => {
     const btn = document.getElementById(`btn-${t}`);
-    btn.style.background = selectedValues[t] ? "#c8e6c9" : "white";
+    if (btn) {
+      btn.style.background = selectedValues[t] ? "#c8e6c9" : "white";
+    }
   });
 
-  document.getElementById(`btn-${tag}`).style.background = "#a5d6a7";
+  const thisBtn = document.getElementById(`btn-${tag}`);
+  if (thisBtn) thisBtn.style.background = "#a5d6a7";
 
   const panel = document.getElementById("tagPanel");
+  if (!tagData[tag]) {
+    panel.innerHTML = "⚠️ 沒有選項";
+    return;
+  }
+
   let html = `<label>${tag} 選項：</label><select id="select-${tag}"><option value="">請選擇</option>`;
   tagData[tag].forEach(opt => {
     html += `<option value="${opt}">${opt}</option>`;
@@ -118,7 +134,7 @@ function toggleTag(tag) {
 
   document.getElementById(`select-${tag}`).onchange = (e) => {
     selectedValues[tag] = e.target.value;
-    activeTag = "";  // 不要再toggleTag("")，避免報錯
+    activeTag = ""; // 不重複toggle，避免錯誤
   };
 }
 
@@ -135,7 +151,6 @@ async function onScanSuccess(decodedText) {
     let previousNote = json?.data?.備註 || "";
     let previousDate = json?.data?.日期 || "無";
 
-    // 顯示最新
     document.getElementById("latestRecord").innerText = `📄 上次紀錄：${previousDate}\n備註：${previousNote || "無"}`;
 
     let previousTagValues = {};
