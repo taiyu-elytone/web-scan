@@ -103,6 +103,12 @@
         targetDiv.innerHTML = "⚠️ 沒有資料";
         return;
       }
+
+      // 銷毀已存在的 DataTable
+      if ( $.fn.DataTable.isDataTable("#myTable") ) {
+        $("#myTable").DataTable().destroy();
+      }
+
       let html = `<table id="myTable" class="display"><thead><tr>`;
       data[0].forEach((th) => html += `<th>${th}</th>`);
       html += `</tr></thead><tbody>`;
@@ -115,6 +121,7 @@
       });
       html += `</tbody></table>`;
       targetDiv.innerHTML = html;
+
       $("#myTable").DataTable({
         order: [[0, "desc"]],  // 以第一欄日期倒序
         language: {
