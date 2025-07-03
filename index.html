@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>📷 二維碼掃描器</title>
+  <title>📷 二維碼掃描及資料管理</title>
   <!-- html5-qrcode -->
   <script src="https://unpkg.com/html5-qrcode" defer></script>
   <!-- DataTables -->
@@ -32,7 +32,7 @@
     nav button:hover {
       background-color: #45a049;
     }
-    #reader {
+    #reader, #readerQuery {
       width: 100%;
       max-width: 350px;
       margin: auto;
@@ -40,7 +40,7 @@
       overflow: hidden;
       box-shadow: 0 0 10px #aaa;
     }
-    #result {
+    #result, #latestText {
       margin-top: 20px;
       font-size: 18px;
       color: #333;
@@ -53,12 +53,6 @@
       margin-top: 10px;
       color: #888;
       font-size: 14px;
-    }
-    #latestText {
-      background: #fff;
-      padding: 10px;
-      border-radius: 8px;
-      margin-top: 10px;
     }
     table.dataTable {
       margin: auto;
@@ -122,6 +116,7 @@
       html += `</tbody></table>`;
       targetDiv.innerHTML = html;
       $("#myTable").DataTable({
+        order: [[0, "desc"]],  // 以第一欄日期倒序
         language: {
           url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/zh-HANT.json"
         }
