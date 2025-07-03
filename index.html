@@ -126,21 +126,15 @@ function onScanSuccess(decodedText) {
   if (decodedText === lastScanned) return;
   lastScanned = decodedText;
 
-  // 組合所有標籤
-  let extra = "";
-  Object.keys(selectedValues).forEach(tag => {
-    if (selectedValues[tag]) {
-      extra += `${tag}:${selectedValues[tag]}, `;
-    }
-  });
+  // 把條碼內容存到 text，並且把其他標籤加到 note
+  const noteContent = Object.keys(selectedValues)
+    .map(tag => selectedValues[tag] ? `${tag}:${selectedValues[tag]}` : "")
+    .filter(val => val !== "").join(", ");
+
   const note = document.getElementById("globalNote").value;
-  if (note) {
-    extra += `備註:${note}`;
-  }
-  if (extra.endsWith(", ")) {
-    extra = extra.slice(0, -2);
-  }
-  const finalText = decodedText + (extra ? ` | ${extra}` : "");
+  let finalNote = noteContent + (noteContent && note ? ", " : "") + note;
+
+  const finalText = `${decodedText} | ${finalNote}`;
 
   document.getElementById('result').innerText = `📦 掃描成功：${finalText}`;
   document.getElementById('loadingText').innerText = "⬆️ 正在上傳...";
