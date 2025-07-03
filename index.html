@@ -76,10 +76,15 @@ function loadTags() {
         tagData[tag] = options;
       });
       renderTagButtons();
+
+      // 自動顯示第一個標籤
+      const firstTag = Object.keys(tagData)[0];
+      if (firstTag) {
+        toggleTag(firstTag);
+      }
     })
     .catch(err => console.error("讀取ItemList失敗", err));
 }
-
 function renderTagButtons() {
   const btnContainer = document.getElementById("tagButtons");
   btnContainer.innerHTML = "";
