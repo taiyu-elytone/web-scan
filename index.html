@@ -101,6 +101,7 @@ function toggleTag(tag) {
     const btn = document.getElementById(`btn-${t}`);
     btn.style.background = selectedValues[t] ? "#c8e6c9" : "white";
   });
+
   document.getElementById(`btn-${tag}`).style.background = "#a5d6a7";
 
   const panel = document.getElementById("tagPanel");
@@ -117,7 +118,7 @@ function toggleTag(tag) {
 
   document.getElementById(`select-${tag}`).onchange = (e) => {
     selectedValues[tag] = e.target.value;
-    activeTag = ""; // 只清除active狀態，不再呼叫 toggleTag("")
+    activeTag = "";  // 不要再toggleTag("")，避免報錯
   };
 }
 
