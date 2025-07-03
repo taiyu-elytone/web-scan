@@ -77,15 +77,9 @@ function loadTags() {
       });
       renderTagButtons();
 
-      // 顯示按鈕和選單
+      // 顯示按鈕和選單，但不自動打開
       document.getElementById("tagButtons").style.display = "block";
       document.getElementById("tagPanel").style.display = "block";
-
-      // 自動顯示第一個
-      const firstTag = Object.keys(tagData)[0];
-      if (firstTag) {
-        toggleTag(firstTag);
-      }
     })
     .catch(err => {
       console.error("讀取ItemList失敗", err);
@@ -134,7 +128,7 @@ function toggleTag(tag) {
 
   document.getElementById(`select-${tag}`).onchange = (e) => {
     selectedValues[tag] = e.target.value;
-    activeTag = ""; // 不重複toggle，避免錯誤
+    activeTag = ""; // 不要再自動切
   };
 }
 
