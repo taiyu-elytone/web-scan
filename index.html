@@ -49,6 +49,20 @@
       color: #888;
       font-size: 14px;
     }
+    #dataSection table {
+      margin: auto;
+      border-collapse: collapse;
+      width: 90%;
+      background: #fff;
+    }
+    #dataSection th, #dataSection td {
+      border: 1px solid #ddd;
+      padding: 8px;
+    }
+    #dataSection th {
+      background-color: #4CAF50;
+      color: white;
+    }
   </style>
 </head>
 <body>
@@ -73,7 +87,7 @@
   <!-- 資料列表 -->
   <div id="dataSection" style="display:none;">
     <h3>📄 資料列表</h3>
-    <pre id="dataList" style="background:#fff;padding:10px;border-radius:8px;overflow:auto;max-height:400px;"></pre>
+    <div id="dataList" style="overflow-x:auto;"></div>
   </div>
 
   <script>
@@ -108,14 +122,33 @@
       document.getElementById("scanSection").style.display = "none";
       document.getElementById("dataSection").style.display = "block";
       const dataList = document.getElementById("dataList");
-      dataList.innerText = "⌛ 載入中...";
+      dataList.innerHTML = "⌛ 載入中...";
+
       fetch(`${scriptUrl}?action=${action}`)
       .then(res => res.json())
       .then(data => {
-        dataList.innerText = JSON.stringify(data, null, 2);
+        if (!Array.isArray(data) || data.length === 0) {
+          dataList.innerHTML = "⚠️ 沒有資料";
+          return;
+        }
+        // 將陣列轉成 table
+        let html = "<table><thead><tr>";
+        data[0].forEach((col, idx) => {
+          html += `<th>欄位${idx+1}</th>`; // 這裡你可改成標題名稱
+        });
+        html += "</tr></thead><tbody>";
+        data.forEach(row => {
+          html += "<tr>";
+          row.forEach(cell => {
+            html += `<td>${cell}</td>`;
+          });
+          html += "</tr>";
+        });
+        html += "</tbody></table>";
+        dataList.innerHTML = html;
       })
       .catch(err => {
-        dataList.innerText = `❌ 載入錯誤：${err.message}`;
+        dataList.innerHTML = `❌ 載入錯誤：${err.message}`;
       });
     }
 
