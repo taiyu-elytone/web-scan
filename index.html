@@ -68,21 +68,15 @@
       margin: auto;
       width: 90% !important;
     }
-    ul.simple-list {
-      list-style-type: none;
-      padding: 0;
-      width: 90%;
-      margin: auto;
-    }
-    ul.simple-list li {
+    .card {
       background: #fff;
       border: 1px solid #ccc;
-      padding: 8px;
-      margin: 4px 0;
+      border-radius: 8px;
+      padding: 10px;
+      margin: 6px auto;
+      width: 90%;
       text-align: left;
-    }
-    ul.simple-list li:hover {
-      background: #f0f0f0;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
   </style>
 </head>
@@ -121,7 +115,7 @@
   <script>
     let lastScanned = "";
     let currentMode = "scan";
-    const scriptUrl = 'https://script.google.com/macros/s/AKfycby7Xx7L1-GTL01_AlwpLNDCyDKx-P0_XHbUev5n9JoBv9wrEKwcAaukJMfwLbfH4LuG/exec';
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbwhsEAil8GvwtMcZ8p2ypiLFrI9xln600Y8qnJip4LlOtJpJ-5uUNMX7AsoFC9qr_01/exec';
 
     function renderTable(targetDiv, data) {
       if (!Array.isArray(data) || data.length === 0) {
@@ -129,8 +123,9 @@
         return;
       }
 
-      if ( $.fn.DataTable.isDataTable("#myTable") ) {
+      if ($.fn.DataTable.isDataTable("#myTable")) {
         $("#myTable").DataTable().destroy();
+        $("#myTable").empty();
       }
 
       let html = `<table id="myTable" class="display"><thead><tr>`;
@@ -162,10 +157,16 @@
         document.getElementById('result').innerText = `📦 掃描成功：${decodedText}`;
         document.getElementById('loadingText').innerText = "⬆️ 正在上傳...";
         fetch(`${scriptUrl}?action=WriteData&text=${encodeURIComponent(decodedText)}`)
-          .then(res => res.text())
+          .then(res => {
+            if (!res.ok) throw new Error(`伺服器錯誤: ${res.status}`);
+            return res.text();
+          })
           .then(msg => {
             document.getElementById('loadingText').innerText = `✅ 上傳成功：${msg}`;
             setTimeout(() => { lastScanned = ""; }, 3000);
+          })
+          .catch(err => {
+            document.getElementById('loadingText').innerText = `❌ 上傳失敗：${err.message}`;
           });
       } else if (currentMode === "query") {
         document.getElementById('queryLoading').innerText = "⬆️ 正在上傳並查詢...";
@@ -180,6 +181,9 @@
               renderTable(document.getElementById("queryTable"), data);
             }
             setTimeout(() => { lastScanned = ""; }, 3000);
+          })
+          .catch(err => {
+            document.getElementById('queryLoading').innerText = `❌ 查詢失敗：${err.message}`;
           });
       }
     }
@@ -201,12 +205,18 @@
             dataList.innerHTML = "⚠️ 沒有資料";
             return;
           }
-          let html = "<ul class='simple-list'>";
+          let html = "";
           data.slice(1).reverse().forEach(row => {
-            html += `<li>${row.join(" | ")}</li>`;
+            html += `<div class="card">`;
+            row.forEach((cell, idx) => {
+              html += `<strong>欄${idx + 1}</strong>：${cell}<br>`;
+            });
+            html += `</div>`;
           });
-          html += "</ul>";
           dataList.innerHTML = html;
+        })
+        .catch(err => {
+          dataList.innerHTML = `❌ 讀取失敗：${err.message}`;
         });
     }
 
@@ -216,18 +226,22 @@
         document.getElementById("scanSection").style.display = "block";
         document.getElementById("querySection").style.display = "none";
         document.getElementById("tableSection").style.display = "none";
+        scanner.render(onScanSuccess);
+        scannerQuery.clear();
       } else if (mode === "query") {
         document.getElementById("scanSection").style.display = "none";
         document.getElementById("querySection").style.display = "block";
         document.getElementById("tableSection").style.display = "none";
+        scannerQuery.render(onScanSuccess);
+        scanner.clear();
       }
     }
 
+    let scanner, scannerQuery;
     window.onload = () => {
-      const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
-      const scannerQuery = new Html5QrcodeScanner("readerQuery", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
+      scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
+      scannerQuery = new Html5QrcodeScanner("readerQuery", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
       scanner.render(onScanSuccess);
-      scannerQuery.render(onScanSuccess);
     };
   </script>
 </body>
