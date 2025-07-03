@@ -58,31 +58,12 @@
       background-color: #4CAF50 !important;
       color: white;
     }
-    table.dataTable tbody tr {
-      background-color: #fff;
-    }
     table.dataTable tbody tr:hover {
       background-color: #f0f0f0;
     }
     table.dataTable {
       margin: auto;
       width: 90% !important;
-    }
-    ul.simple-list {
-      list-style-type: none;
-      padding: 0;
-      width: 90%;
-      margin: auto;
-    }
-    ul.simple-list li {
-      background: #fff;
-      border: 1px solid #ccc;
-      padding: 8px;
-      margin: 4px 0;
-      text-align: left;
-    }
-    ul.simple-list li:hover {
-      background: #f0f0f0;
     }
   </style>
 </head>
@@ -211,12 +192,28 @@
             dataList.innerHTML = "⚠️ 沒有資料";
             return;
           }
-          let html = "<ul class='simple-list'>";
+
+          // 建立 table
+          let html = `<table id="dataTable" class="display"><thead><tr>`;
+          data[0].forEach((th) => html += `<th>${th}</th>`);
+          html += `</tr></thead><tbody>`;
           data.slice(1).reverse().forEach(row => {
-            html += `<li>${row.join(" | ")}</li>`;
+            html += `<tr>`;
+            row.forEach(cell => {
+              html += `<td>${cell}</td>`;
+            });
+            html += `</tr>`;
           });
-          html += "</ul>";
+          html += `</tbody></table>`;
+
           dataList.innerHTML = html;
+
+          $("#dataTable").DataTable({
+            pageLength: 10,
+            language: {
+              url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/zh-HANT.json"
+            }
+          });
         })
         .catch(err => {
           dataList.innerHTML = `❌ 讀取失敗：${err.message}`;
