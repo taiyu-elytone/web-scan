@@ -32,8 +32,8 @@
   <!-- 掃描上傳 -->
   <div id="scanSection">
     <div id="reader"></div>
-    <div id="tagButtons" style="margin-top:15px; display:none;"></div>
-    <div id="tagPanel" class="tag-panel" style="display:none;"></div>
+    <div id="tagButtons" style="margin-top:15px;"></div>
+    <div id="tagPanel" class="tag-panel">載入中，請稍候...</div>
     <div style="margin-top:10px;">
       <label>備註：</label>
       <input type="text" id="globalNote" placeholder="輸入備註" style="width:80%; padding:5px;">
@@ -76,14 +76,12 @@ function loadTags() {
         tagData[tag] = options;
       });
       renderTagButtons();
+      document.getElementById("tagPanel").innerText = ""; // 清空內容
 
-      // 顯示按鈕和選單，但不自動打開
-      document.getElementById("tagButtons").style.display = "block";
-      document.getElementById("tagPanel").style.display = "block";
+      // 不再自動顯示第一個
     })
     .catch(err => {
       console.error("讀取ItemList失敗", err);
-      document.getElementById("tagPanel").style.display = "block";
       document.getElementById("tagPanel").innerText = "⚠️ 讀取失敗，請重整";
     });
 }
