@@ -68,6 +68,22 @@
       margin: auto;
       width: 90% !important;
     }
+    ul.simple-list {
+      list-style-type: none;
+      padding: 0;
+      width: 90%;
+      margin: auto;
+    }
+    ul.simple-list li {
+      background: #fff;
+      border: 1px solid #ccc;
+      padding: 8px;
+      margin: 4px 0;
+      text-align: left;
+    }
+    ul.simple-list li:hover {
+      background: #f0f0f0;
+    }
   </style>
 </head>
 <body>
@@ -81,15 +97,14 @@
     <button onclick="loadData('A4IO-Tracking')">A4IO資料</button>
   </nav>
 
-  <!-- 掃描 -->
+  <!-- 掃描上傳 -->
   <div id="scanSection">
     <div id="reader"></div>
     <div id="result">掃描結果會顯示在這裡</div>
     <div class="spinner" id="loadingText"></div>
-    <div id="scanTable"></div>
   </div>
 
-  <!-- 查詢 -->
+  <!-- 資料查詢 -->
   <div id="querySection" style="display:none;">
     <div id="readerQuery"></div>
     <div id="latestText">掃描後顯示最新一筆文字</div>
@@ -150,13 +165,12 @@
           .then(res => res.text())
           .then(msg => {
             document.getElementById('loadingText').innerText = `✅ 上傳成功：${msg}`;
-            refreshScanTable();
             setTimeout(() => { lastScanned = ""; }, 3000);
           });
       } else if (currentMode === "query") {
         document.getElementById('queryLoading').innerText = "⬆️ 正在上傳並查詢...";
         fetch(`${scriptUrl}?action=WriteData&text=${encodeURIComponent(decodedText)}`)
-          .then(() => fetch(`${scriptUrl}?action=DataList`))
+          .then(() => fetch(`${scriptUrl}?action=DataFilter`))
           .then(res => res.json())
           .then(data => {
             document.getElementById('queryLoading').innerText = "";
@@ -170,18 +184,11 @@
       }
     }
 
-    function refreshScanTable() {
-      fetch(`${scriptUrl}?action=DataList`)
-        .then(res => res.json())
-        .then(data => renderTable(document.getElementById("scanTable"), data));
-    }
-
     function loadData(action) {
       document.getElementById("scanSection").style.display = "none";
       document.getElementById("querySection").style.display = "none";
       document.getElementById("tableSection").style.display = "block";
 
-      // 自動改標題
       const titleText = action.replace("-Tracking", "") + "資料";
       document.getElementById("tableTitle").innerText = `📄 ${titleText}`;
 
@@ -189,7 +196,18 @@
       dataList.innerHTML = "⌛ 載入中...";
       fetch(`${scriptUrl}?action=${action}`)
         .then(res => res.json())
-        .then(data => renderTable(dataList, data));
+        .then(data => {
+          if (!Array.isArray(data) || data.length === 0) {
+            dataList.innerHTML = "⚠️ 沒有資料";
+            return;
+          }
+          let html = "<ul class='simple-list'>";
+          data.slice(1).reverse().forEach(row => {
+            html += `<li>${row.join(" | ")}</li>`;
+          });
+          html += "</ul>";
+          dataList.innerHTML = html;
+        });
     }
 
     function switchMode(mode) {
@@ -198,7 +216,6 @@
         document.getElementById("scanSection").style.display = "block";
         document.getElementById("querySection").style.display = "none";
         document.getElementById("tableSection").style.display = "none";
-        refreshScanTable();
       } else if (mode === "query") {
         document.getElementById("scanSection").style.display = "none";
         document.getElementById("querySection").style.display = "block";
@@ -211,7 +228,6 @@
       const scannerQuery = new Html5QrcodeScanner("readerQuery", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
       scanner.render(onScanSuccess);
       scannerQuery.render(onScanSuccess);
-      refreshScanTable();
     };
   </script>
 </body>
