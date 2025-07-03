@@ -13,7 +13,7 @@
     nav button { margin:5px; padding:8px 16px; border:none; border-radius:6px; background:#4CAF50; color:white; cursor:pointer; }
     nav button:hover { background:#45a049; }
     #reader, #readerQuery { max-width:350px; margin:auto; }
-    #result, #latestRecord { background:#e0ffe0; margin-top:20px; padding:10px; border-radius:8px; white-space:pre-wrap; }
+    #result, #latestRecord { background:#e0ffe0; margin-top:20px; padding:10px; border-radius:8px; }
     .tag-button { margin:5px; padding:8px 16px; border-radius:6px; border:1px solid #4CAF50; background:white; cursor:pointer; }
     .tag-button.active { background:#c8e6c9; }
     .tag-panel { margin-top:15px; }
@@ -29,6 +29,7 @@
     <button onclick="loadData('A4IO-Tracking')">A4IO資料</button>
   </nav>
 
+  <!-- 掃描上傳 -->
   <div id="scanSection">
     <div id="reader"></div>
     <div id="tagButtons" style="margin-top:15px;"></div>
@@ -42,6 +43,7 @@
     <div id="loadingText"></div>
   </div>
 
+  <!-- 資料查詢 -->
   <div id="querySection" style="display:none;">
     <div id="readerQuery"></div>
     <div id="latestText">掃描後顯示最新一筆文字</div>
@@ -49,6 +51,7 @@
     <div id="queryTable"></div>
   </div>
 
+  <!-- 其他 -->
   <div id="tableSection" style="display:none;">
     <h3 id="tableTitle">📄 資料列表</h3>
     <div id="dataList"></div>
@@ -59,7 +62,7 @@ let lastScanned = "";
 let currentMode = "scan";
 const scriptUrl = "https://script.google.com/macros/s/AKfycbyN49RSqSW6T4hroGFgCd0l-ql0WPl8rAIwy3hLRCtR2kbytEcaT7V_Dqik05grx_J5/exec";
 
-let tagData = {};     
+let tagData = {};      
 let selectedValues = {};  
 let activeTag = "";       
 
@@ -74,6 +77,7 @@ function loadTags() {
       });
       renderTagButtons();
 
+      // 自動切第一個標籤
       const firstTag = Object.keys(tagData)[0];
       if (firstTag) {
         toggleTag(firstTag);
@@ -91,9 +95,8 @@ function renderTagButtons() {
 }
 
 function toggleTag(tag) {
-  if (!tag) return; 
-
   activeTag = tag;
+
   Object.keys(tagData).forEach(t => {
     const btn = document.getElementById(`btn-${t}`);
     btn.style.background = selectedValues[t] ? "#c8e6c9" : "white";
@@ -114,8 +117,7 @@ function toggleTag(tag) {
 
   document.getElementById(`select-${tag}`).onchange = (e) => {
     selectedValues[tag] = e.target.value;
-    activeTag = ""; 
-    renderTagButtons(); 
+    activeTag = ""; // 只清除active狀態，不再呼叫 toggleTag("")
   };
 }
 
@@ -132,6 +134,7 @@ async function onScanSuccess(decodedText) {
     let previousNote = json?.data?.備註 || "";
     let previousDate = json?.data?.日期 || "無";
 
+    // 顯示最新
     document.getElementById("latestRecord").innerText = `📄 上次紀錄：${previousDate}\n備註：${previousNote || "無"}`;
 
     let previousTagValues = {};
