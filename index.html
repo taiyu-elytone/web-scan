@@ -13,7 +13,7 @@
     nav button { margin:5px; padding:8px 16px; border:none; border-radius:6px; background:#4CAF50; color:white; cursor:pointer; }
     nav button:hover { background:#45a049; }
     #reader, #readerQuery { max-width:350px; margin:auto; }
-    #result, #latestText { background:#e0ffe0; margin-top:20px; padding:10px; border-radius:8px; }
+    #result, #latestRecord { background:#e0ffe0; margin-top:20px; padding:10px; border-radius:8px; }
     .tag-button { margin:5px; padding:8px 16px; border-radius:6px; border:1px solid #4CAF50; background:white; cursor:pointer; }
     .tag-button.active { background:#c8e6c9; }
     .tag-panel { margin-top:15px; }
@@ -29,6 +29,7 @@
     <button onclick="loadData('A4IO-Tracking')">A4IO資料</button>
   </nav>
 
+  <!-- 掃描上傳 -->
   <div id="scanSection">
     <div id="reader"></div>
     <div id="tagButtons" style="margin-top:15px;"></div>
@@ -38,9 +39,11 @@
       <input type="text" id="globalNote" placeholder="輸入備註" style="width:80%; padding:5px;">
     </div>
     <div id="result">掃描結果會顯示在這裡</div>
+    <div id="latestRecord">上次紀錄會顯示在這裡</div>
     <div id="loadingText"></div>
   </div>
 
+  <!-- 資料查詢 -->
   <div id="querySection" style="display:none;">
     <div id="readerQuery"></div>
     <div id="latestText">掃描後顯示最新一筆文字</div>
@@ -48,6 +51,7 @@
     <div id="queryTable"></div>
   </div>
 
+  <!-- 其他 -->
   <div id="tableSection" style="display:none;">
     <h3 id="tableTitle">📄 資料列表</h3>
     <div id="dataList"></div>
@@ -58,9 +62,9 @@ let lastScanned = "";
 let currentMode = "scan";
 const scriptUrl = "https://script.google.com/macros/s/AKfycbzgXD-I_Jlr32IZYoc6WX9waBFUwhvOKRZ0265yKt-g98llTZfJx__14kYEUjdXKIEl/exec";
 
-let tagData = {};      // 所有標籤定義
-let selectedValues = {};  // 目前選的標籤
-let activeTag = "";       // 目前正在操作的標籤
+let tagData = {};      // 標籤及選項
+let selectedValues = {};  // 使用者目前選擇
+let activeTag = "";       // 目前點擊的標籤
 
 function loadTags() {
   fetch(`${scriptUrl}?action=ItemList`)
@@ -91,6 +95,7 @@ function toggleTag(tag) {
     btn.style.background = selectedValues[t] ? "#c8e6c9" : "white";
   });
   document.getElementById(`btn-${tag}`).style.background = "#a5d6a7";
+
   const panel = document.getElementById("tagPanel");
   let html = `<label>${tag} 選項：</label><select id="select-${tag}"><option value="">請選擇</option>`;
   tagData[tag].forEach(opt => {
@@ -98,9 +103,11 @@ function toggleTag(tag) {
   });
   html += `</select>`;
   panel.innerHTML = html;
+
   if (selectedValues[tag]) {
     document.getElementById(`select-${tag}`).value = selectedValues[tag];
   }
+
   document.getElementById(`select-${tag}`).onchange = (e) => {
     selectedValues[tag] = e.target.value;
     toggleTag("");
@@ -114,11 +121,15 @@ async function onScanSuccess(decodedText) {
   document.getElementById('result').innerText = `📦 掃描成功：${decodedText}`;
   document.getElementById('loadingText').innerText = "⬆️ 讀取最新資料中...";
 
-  // 1. 先取最新一筆
   try {
+    // 1. 先抓最新
     const res = await fetch(`${scriptUrl}?action=LatestDataFilter&filter=${encodeURIComponent(decodedText)}`);
     const json = await res.json();
     let previousNote = json?.data?.備註 || "";
+    let previousDate = json?.data?.日期 || "無";
+
+    // 顯示最新
+    document.getElementById("latestRecord").innerText = `📄 上次紀錄：${previousDate}\n備註：${previousNote || "無"}`;
 
     // 2. 解析舊標籤
     let previousTagValues = {};
@@ -129,18 +140,18 @@ async function onScanSuccess(decodedText) {
       });
     }
 
-    // 3. 把目前畫面選的合併進去
+    // 3. 合併新的
     Object.keys(selectedValues).forEach(tag => {
       if (selectedValues[tag]) {
-        previousTagValues[tag] = selectedValues[tag]; // 覆蓋
+        previousTagValues[tag] = selectedValues[tag];
       }
     });
 
-    // 4. 加上額外輸入的備註
+    // 4. 額外備註
     const extraNote = document.getElementById("globalNote").value;
     if (extraNote) previousTagValues["備註"] = extraNote;
 
-    // 5. 整理 note
+    // 5. 整理
     const finalNote = Object.entries(previousTagValues)
       .map(([k,v]) => `${k}:${v}`)
       .join(", ");
