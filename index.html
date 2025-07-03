@@ -66,10 +66,10 @@ let selectedValues = {};  // 標籤選的值
 let activeTag = "";       // 目前點擊的標籤
 
 function loadTags() {
-  fetch(${scriptUrl}?action=ItemList)
+  fetch(`${scriptUrl}?action=ItemList`)
     .then(res => res.json())
     .then(data => {
-      data.forEach(row => {
+      data.slice(2).forEach(row => {
         const tag = row[0];
         const options = row.slice(1).filter(cell => cell !== "" && cell != null);
         tagData[tag] = options;
@@ -83,7 +83,7 @@ function renderTagButtons() {
   const btnContainer = document.getElementById("tagButtons");
   btnContainer.innerHTML = "";
   Object.keys(tagData).forEach(tag => {
-    btnContainer.innerHTML += <button class="tag-button" id="btn-${tag}" onclick="toggleTag('${tag}')">${tag}</button>;
+    btnContainer.innerHTML += `<button class="tag-button" id="btn-${tag}" onclick="toggleTag('${tag}')">${tag}</button>`;
   });
 }
 
@@ -92,31 +92,31 @@ function toggleTag(tag) {
 
   // 更新按鈕狀態
   Object.keys(tagData).forEach(t => {
-    const btn = document.getElementById(btn-${t});
+    const btn = document.getElementById(`btn-${t}`);
     if (selectedValues[t]) {
       btn.style.background = "#c8e6c9";
     } else {
       btn.style.background = "white";
     }
   });
-  document.getElementById(btn-${tag}).style.background = "#a5d6a7"; // active
+  document.getElementById(`btn-${tag}`).style.background = "#a5d6a7"; // active
 
   // 在固定面板顯示
   const panel = document.getElementById("tagPanel");
-  let html = <label>${tag} 選項：</label><select id="select-${tag}"><option value="">請選擇</option>;
+  let html = `<label>${tag} 選項：</label><select id="select-${tag}"><option value="">請選擇</option>`;
   tagData[tag].forEach(opt => {
-    html += <option value="${opt}">${opt}</option>;
+    html += `<option value="${opt}">${opt}</option>`;
   });
-  html += </select>;
+  html += `</select>`;
   panel.innerHTML = html;
 
   // 如果有之前選擇過，就填入
   if (selectedValues[tag]) {
-    document.getElementById(select-${tag}).value = selectedValues[tag];
+    document.getElementById(`select-${tag}`).value = selectedValues[tag];
   }
 
   // 綁定選擇事件
-  document.getElementById(select-${tag}).onchange = (e) => {
+  document.getElementById(`select-${tag}`).onchange = (e) => {
     selectedValues[tag] = e.target.value;
     toggleTag(""); // 收起
   };
@@ -128,24 +128,24 @@ function onScanSuccess(decodedText) {
 
   // 把條碼內容存到 text，並且把其他標籤加到 note
   const noteContent = Object.keys(selectedValues)
-    .map(tag => selectedValues[tag] ? ${tag}:${selectedValues[tag]} : "")
+    .map(tag => selectedValues[tag] ? `${tag}:${selectedValues[tag]}` : "")
     .filter(val => val !== "").join(", ");
 
   const note = document.getElementById("globalNote").value;
   let finalNote = noteContent + (noteContent && note ? ", " : "") + note;
 
-  const finalText = ${decodedText};
+  const finalText = `${decodedText} | ${finalNote}`;
 
-  document.getElementById('result').innerText = 📦 掃描成功：${finalText};
+  document.getElementById('result').innerText = `📦 掃描成功：${finalText}`;
   document.getElementById('loadingText').innerText = "⬆️ 正在上傳...";
-  fetch(${scriptUrl}?action=WriteData&text=${encodeURIComponent(finalText)}&note=${encodeURIComponent(finalNote)})
+  fetch(`${scriptUrl}?action=WriteData&text=${encodeURIComponent(finalText)}`)
     .then(res => res.text())
     .then(msg => {
-      document.getElementById('loadingText').innerText = ✅ 上傳成功：${msg};
+      document.getElementById('loadingText').innerText = `✅ 上傳成功：${msg}`;
       setTimeout(() => { lastScanned = ""; }, 3000);
     })
     .catch(err => {
-      document.getElementById('loadingText').innerText = ❌ 上傳失敗：${err.message};
+      document.getElementById('loadingText').innerText = `❌ 上傳失敗：${err.message}`;
     });
 }
 
@@ -158,15 +158,15 @@ function renderTable(targetDiv, data) {
     $("#myTable").DataTable().destroy();
     $("#myTable").empty();
   }
-  let html = <table id="myTable" class="display"><thead><tr>;
-  data[0].forEach((th) => html += <th>${th}</th>);
-  html += </tr></thead><tbody>;
+  let html = `<table id="myTable" class="display"><thead><tr>`;
+  data[0].forEach((th) => html += `<th>${th}</th>`);
+  html += `</tr></thead><tbody>`;
   data.slice(1).reverse().forEach(row => {
-    html += <tr>;
-    row.forEach(cell => { html += <td>${cell}</td>; });
-    html += </tr>;
+    html += `<tr>`;
+    row.forEach(cell => { html += `<td>${cell}</td>`; });
+    html += `</tr>`;
   });
-  html += </tbody></table>;
+  html += `</tbody></table>`;
   targetDiv.innerHTML = html;
   $("#myTable").DataTable({
     pageLength: 10,
@@ -178,32 +178,32 @@ function loadData(action) {
   document.getElementById("scanSection").style.display = "none";
   document.getElementById("querySection").style.display = "none";
   document.getElementById("tableSection").style.display = "block";
-  document.getElementById("tableTitle").innerText = 📄 ${action.replace("-Tracking","")} 資料;
+  document.getElementById("tableTitle").innerText = `📄 ${action.replace("-Tracking","")} 資料`;
   const dataList = document.getElementById("dataList");
   dataList.innerHTML = "⌛ 載入中...";
-  fetch(${scriptUrl}?action=${action})
+  fetch(`${scriptUrl}?action=${action}`)
     .then(res => res.json())
     .then(data => {
       if (!Array.isArray(data) || data.length === 0) {
         dataList.innerHTML = "⚠️ 沒有資料";
         return;
       }
-      let html = <table id="dataTable" class="display"><thead><tr>;
-      data[0].forEach((th) => html += <th>${th}</th>);
-      html += </tr></thead><tbody>;
+      let html = `<table id="dataTable" class="display"><thead><tr>`;
+      data[0].forEach((th) => html += `<th>${th}</th>`);
+      html += `</tr></thead><tbody>`;
       data.slice(1).reverse().forEach(row => {
-        html += <tr>;
-        row.forEach(cell => { html += <td>${cell}</td>; });
-        html += </tr>;
+        html += `<tr>`;
+        row.forEach(cell => { html += `<td>${cell}</td>`; });
+        html += `</tr>`;
       });
-      html += </tbody></table>;
+      html += `</tbody></table>`;
       dataList.innerHTML = html;
       $("#dataTable").DataTable({
         pageLength: 10,
         language: { url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/zh-HANT.json" }
       });
     })
-    .catch(err => { dataList.innerHTML = ❌ 讀取失敗：${err.message}; });
+    .catch(err => { dataList.innerHTML = `❌ 讀取失敗：${err.message}`; });
 }
 
 function switchMode(mode) {
